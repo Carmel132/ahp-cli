@@ -1,4 +1,8 @@
 goal: Choose College
+labels: [RIT, WPI, RPI]
+
+# weight matrix size is either the number of subcriteria or the number of labels
+
 
 criteria:
   - name: Academics
