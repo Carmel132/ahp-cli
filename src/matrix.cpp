@@ -1,43 +1,58 @@
 #include <matrix.h>
 
-size_t SquareMatrix::size() const {return data_.size();}
+auto SquareMatrix::size() const -> size_t { return data_.size(); }
 
-double& SquareMatrix::get(size_t r, size_t c) {
+auto SquareMatrix::get(size_t r, size_t c) -> double &
+{
     assert(r < size() && c < size() && "Invalid matrix access dimensions");
 
     return data_[r][c];
 }
-double SquareMatrix::get(size_t r, size_t c) const {
+auto SquareMatrix::get(size_t r, size_t c) const -> double
+{
     assert(r < size() && c < size() && "Invalid matrix access dimensions");
 
     return data_[r][c];
 }
-std::vector<double> SquareMatrix::getRow(size_t r) const {
+auto SquareMatrix::getRow(size_t r) const -> std::vector<double>
+{
     assert(r < size() && "Row number too big!");
-    
+
     return data_[r];
 }
-std::vector<double> SquareMatrix::getColumn(size_t c) const {
+auto SquareMatrix::getColumn(size_t c) const -> std::vector<double>
+{
     assert(c < size() && "Column number too big!");
 
     std::vector<double> ret{};
     ret.reserve(size());
 
-    for (size_t i = 0; i < size(); ++i) {
+    for (size_t i = 0; i < size(); ++i)
+    {
         ret.push_back(data_.at(i).at(c));
     }
 
     return ret;
 }
 
-std::vector<double> SquareMatrix::mul(const std::vector<double> &vec) const
+void bar(const std::vector<int> &v)
+{
+    for (auto x : v)
+    {
+        (void)x;
+    }
+}
+
+auto SquareMatrix::mul(const std::vector<double> &vec) const -> std::vector<double>
 {
     assert(size() == vec.size() && "Incorrect dimensions");
 
     std::vector<double> ret(size(), 0);
 
-    for (size_t row = 0; row < size(); ++row) {
-        for (size_t column = 0; column < size(); ++column) {
+    for (size_t row = 0; row < size(); ++row)
+    {
+        for (size_t column = 0; column < size(); ++column)
+        {
             ret[row] += vec[row] * get(row, column);
         }
     }

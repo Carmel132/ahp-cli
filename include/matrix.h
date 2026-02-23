@@ -1,20 +1,21 @@
-#include <vector>
 #include <cassert>
+#include <utility>
+#include <vector>
 
-class SquareMatrix {
+class SquareMatrix
+{
     std::vector<std::vector<double>> data_;
 
 public:
-    SquareMatrix(std::vector<std::vector<double>> data) : data_{data} {};
+    SquareMatrix(std::vector<std::vector<double>> data) : data_{std::move(std::move(data))} {};
 
-    size_t size() const;
+    [[nodiscard]] auto size() const -> size_t;
 
-    double& get(size_t r, size_t c);
-    double get(size_t r, size_t c) const; 
+    auto get(size_t row, size_t column) -> double &;
+    [[nodiscard]] auto get(size_t row, size_t column) const -> double;
 
-    std::vector<double> getRow(size_t r) const;
-    std::vector<double> getColumn(size_t c) const;
+    [[nodiscard]] auto getRow(size_t row) const -> std::vector<double>;
+    [[nodiscard]] auto getColumn(size_t column) const -> std::vector<double>;
 
-    std::vector<double> mul(const std::vector<double>& vec) const;
+    [[nodiscard]] auto mul(const std::vector<double> &vec) const -> std::vector<double>;
 };
-
