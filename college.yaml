@@ -2,9 +2,10 @@ labels: [RIT, WPI, RPI]
 
 # weight matrix size is either the number of subcriteria or the number of labels
 
+# mat(row)(column) is how much you like labels(row) over labels(column)
 
 criteria:
-  name: "Choose college"  
+  name: "Choose college"
   comparisons:
     - [1, 1]
     - [1, 1]

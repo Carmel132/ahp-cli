@@ -5,12 +5,20 @@
 #include <iostream>
 #include <vector>
 
+#include <repl.h>
+
 int main(int argc, char *argv[])
 {
+    auto [currentNode, labels] = promptUserForHeadNode();
 
-    assert(argc > 1 && "No file provided");
+    while (true)
+    {
+        currentNode = promptUserForNode(currentNode, labels);
+    }
 
-    YAML::Node config = YAML::LoadFile(argv[1]);
+    // assert(argc > 1 && "No file provided");
+
+    YAML::Node config = YAML::LoadFile(/*argv[1]*/ "../college.yaml");
 
     YAML::Node criteria = config["criteria"]["subcriteria"];
 

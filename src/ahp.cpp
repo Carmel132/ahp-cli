@@ -14,7 +14,7 @@ auto getWeightVector(const SquareMatrix &mat) -> std::vector<double>
         {
             prod *= mat.get(row, column);
         }
-        ret[row] = std::pow(prod, 1. / mat.size());
+        ret[row] = std::pow(prod, 1. / static_cast<double>(mat.size()));
     }
 
 #else
@@ -40,9 +40,9 @@ auto getWeightVector(const SquareMatrix &mat) -> std::vector<double>
 #endif
 
     double total = std::accumulate(ret.begin(), ret.end(), 0.0);
-    for (auto &v : ret)
+    for (auto &val : ret)
     {
-        v /= total;
+        val /= total;
     }
 
     return ret;
@@ -59,14 +59,16 @@ auto getConsistency(const SquareMatrix &mat, std::vector<double> weight) -> doub
     {
         ret += prod.at(i) / weight.at(i);
     }
-    ret /= mat.size();
+    ret /= static_cast<double>(mat.size());
 
     return ret;
 }
 
 auto getConsistencyIndex(double consistency, size_t labels) -> double
 {
-    return (consistency - labels) / (labels - 1);
+    double labelsd{static_cast<double>(labels)};
+
+    return (consistency - labelsd) / (labelsd - 1);
 }
 
 auto YAML_MapHasLabel(const YAML::Node &map, const std::string &label) -> bool
@@ -80,9 +82,9 @@ auto YAML_MapHasLabel(const YAML::Node &map, const std::string &label) -> bool
 auto YAML_MatrixFromSequence(const YAML::Node &seq) -> SquareMatrix
 {
     std::vector<std::vector<double>> mat{};
-    for (auto &&i : seq)
+    for (auto &&row : seq)
     {
-        mat.push_back(i.as<std::vector<double>>());
+        mat.push_back(row.as<std::vector<double>>());
     }
 
     return SquareMatrix{mat};

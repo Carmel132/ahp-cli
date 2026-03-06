@@ -1,3 +1,5 @@
+#pragma once
+
 #include <cassert>
 #include <utility>
 #include <vector>
@@ -9,6 +11,8 @@ class SquareMatrix
 public:
     SquareMatrix(std::vector<std::vector<double>> data) : data_{std::move(std::move(data))} {};
 
+    SquareMatrix() : data_{} {};
+
     [[nodiscard]] auto size() const -> size_t;
 
     auto get(size_t row, size_t column) -> double &;
@@ -18,4 +22,6 @@ public:
     [[nodiscard]] auto getColumn(size_t column) const -> std::vector<double>;
 
     [[nodiscard]] auto mul(const std::vector<double> &vec) const -> std::vector<double>;
+
+    static auto OneMatrix(int size) -> SquareMatrix;
 };

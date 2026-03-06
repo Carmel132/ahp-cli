@@ -35,14 +35,6 @@ auto SquareMatrix::getColumn(size_t c) const -> std::vector<double>
     return ret;
 }
 
-void bar(const std::vector<int> &v)
-{
-    for (auto x : v)
-    {
-        (void)x;
-    }
-}
-
 auto SquareMatrix::mul(const std::vector<double> &vec) const -> std::vector<double>
 {
     assert(size() == vec.size() && "Incorrect dimensions");
@@ -58,4 +50,14 @@ auto SquareMatrix::mul(const std::vector<double> &vec) const -> std::vector<doub
     }
 
     return ret;
+}
+
+auto SquareMatrix::OneMatrix(int size) -> SquareMatrix
+{
+    std::vector<std::vector<double>> ret(size);
+    for (int idx = 0; idx < size; ++idx)
+    {
+        ret[idx] = std::vector<double>(size, 1);
+    }
+    return {ret};
 }
