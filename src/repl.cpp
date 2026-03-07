@@ -16,148 +16,164 @@ auto tryParseInt(std::string_view str) -> std::optional<int>
     return std::nullopt;
 }
 
-auto promptUserForInt(const std::string &message) -> int
+auto promptUserForInt(const std::string &message, std::istream &input) -> int
 {
 
     std::println("{}", message);
     std::print("?> ");
     std::string response;
-    std::getline(std::cin, response);
+    std::getline(input, response);
     std::optional<int> numReponse = tryParseInt(response);
     while (!numReponse.has_value())
     {
         std::print("Invalid input!\n?> ");
-        std::getline(std::cin, response);
+        std::getline(input, response);
         numReponse = tryParseInt(response);
     }
 
     return numReponse.value();
 }
 
-auto promptUserForBool(const std::string &message) -> bool
+auto promptUserForBool(const std::string &message, std::istream &input) -> bool
 {
     static std::vector<std::string> messages{"Yes", "No"};
 
     std::println("{}", message);
-    return promptUserWithOption(messages) == 0;
+    return promptUserWithOption(messages, input) == 0;
 }
 
-auto promptUserForString(const std::string &message) -> std::string
+auto promptUserForString(const std::string &message, std::istream &input) -> std::string
 {
     std::println("{}", message);
     std::print("?> ");
     std::string response;
-    std::getline(std::cin, response);
+    std::getline(input, response);
     return response;
 }
 
-auto promptUserForHeadNode() -> std::pair<Node, std::vector<std::string>>
+auto promptUserForHeadNode(std::istream &input) -> std::pair<Node, std::vector<std::string>>
 {
-    int numLabels = promptUserForInt("How many labels are there");
+    int numLabels = promptUserForInt("How many labels are there", input);
     std::vector<std::string> labels(numLabels);
 
     for (int count{}; count < numLabels; ++count)
     {
-        labels[count] = promptUserForString(std::format("Label {}", count + 1));
+        labels[count] = promptUserForString(std::format("Label {}", count + 1), input);
     }
 
-    std::string objective = promptUserForString("What is the objective");
+    std::string objective = promptUserForString("What is the objective", input);
 
-    return std::make_pair(Node{objective, SquareMatrix::OneMatrix(numLabels), std::nullopt, std::nullopt}, labels);
+    return std::make_pair(Node(objective, SquareMatrix::OneMatrix(numLabels), std::nullopt, std::nullopt), labels);
 }
 
 auto Node::collectSubcriteriaNames()
 {
     assert(subcriteria_.has_value() && "Cannot collect subcriteria names without subcriteria!");
 
-    return subcriteria_.value() | std::views::transform(&Node::name_);
+    return (subcriteria_.value()) | std::views::transform(&Node::name_);
 }
 
-auto promptUserForNode(Node &currentNode, const std::vector<std::string> &labels) -> Node
+auto promptUserForNode(Node_ptr currentNode, const std::vector<std::string> &labels, std::istream &input) -> Node_ptr
 {
     static std::array<NodePromptOption, 4> options{{
-        {[](Node &node, const std::vector<std::string> &strings) -> std::string
+        {.getName = [](Node_ptr& node, const std::vector<std::string> &strings) -> std::string
          {
              return "Change name";
          },
-         [](Node &node, const std::vector<std::string> &strings) -> Node
+         .promptAction = [&input](Node_ptr& node, const std::vector<std::string> &strings) -> Node_ptr
          {
-             node.name_ = promptUserForString("What will be the new name?");
+             node->name_ = promptUserForString("What will be the new name?", input);
              return node;
          },
-         [](Node &node, const std::vector<std::string> &strings) -> bool
+         .isAvailable = [](Node_ptr& node, const std::vector<std::string> &strings) -> bool
          {
              return true;
          }},
-        {[](Node &node, const std::vector<std::string> &strings) -> std::string
+        {.getName = [](Node_ptr& node, const std::vector<std::string> &strings) -> std::string
          {
              return "Change matrix";
          },
-         [](Node &node, const std::vector<std::string> &strings) -> Node
+         .promptAction = [&input](Node_ptr& node, const std::vector<std::string> &strings) -> Node_ptr
          {
-             if (node.subcriteria_.has_value())
+             if (node->subcriteria_.has_value())
              {
-                 node.matrix_ = promptUserForWeightMatrix(node.collectSubcriteriaNames());
+                 node->matrix_ = promptUserForWeightMatrix(node->collectSubcriteriaNames(), input);
              }
              else
              {
-                 node.matrix_ = promptUserForWeightMatrix(strings);
+                 node->matrix_ = promptUserForWeightMatrix(strings, input);
              }
              return node;
          },
-         [](Node &node, const std::vector<std::string> &strings) -> bool
+         .isAvailable = [](Node_ptr& node, const std::vector<std::string> &strings) -> bool
          {
              return true;
          }},
-        {[](Node &node, const std::vector<std::string> &strings) -> std::string
+        {.getName = [](Node_ptr& node, const std::vector<std::string> &strings) -> std::string
          {
-             return node.subcriteria_.has_value() ? "See subcriteria" : "Add subcriteria";
+             return node->subcriteria_.has_value() ? "See subcriteria" : "Add subcriteria";
          },
-         [](Node &node, const std::vector<std::string> &strings) -> Node
+         .promptAction = [&input](Node_ptr& node, const std::vector<std::string> &strings) -> Node_ptr
          {
-             if (node.subcriteria_.has_value())
+             if (node->subcriteria_.has_value())
              {
-                 return node.subcriteria_.value().at(promptUserWithOption(node.collectSubcriteriaNames()));
+                 return node->subcriteria_.value().at(promptUserWithOption(node->collectSubcriteriaNames()));
              }
 
              int numSubcriteria = promptUserForInt("How many subcriteria are there");
 
              // TODO: Make vector field into a smart pointer so it doesn't delete on lambda exit
-             std::vector<Node> subcriteriaNodes{};
+             std::vector<Node_ptr> subcriteriaNodes{};
              subcriteriaNodes.reserve(numSubcriteria);
 
              for (int count{1}; count <= numSubcriteria; ++count)
              {
-                 std::string nodeName = promptUserForString(std::format("Subcriteria {}", count));
-                 subcriteriaNodes.emplace_back(Node{nodeName, SquareMatrix::OneMatrix(strings.size()), std::nullopt, std::make_optional(std::make_shared<Node>(node))});
-             }
-             node.subcriteria_ = std::make_optional(std::move(subcriteriaNodes));
-             return std::move(node);
+                 std::string nodeName = promptUserForString(std::format("Subcriteria {}", count), input);
+              
+                auto child = std::make_shared<Node>(
+                    nodeName,
+                    SquareMatrix::OneMatrix(strings.size())
+                );
+
+                child->enclosingCriteria_ = node;
+                subcriteriaNodes.emplace_back(child);
+
+                 //subcriteriaNodes.emplace_back(std::make_shared<Node>(nodeName, SquareMatrix::OneMatrix(strings.size()), std::nullopt, std::make_optional<std::weak_ptr<Node>>(node)));
+             
+             
+             
+                }
+
+             node->subcriteria_.emplace(subcriteriaNodes);
+             return node;
          },
-         [](Node &node, const std::vector<std::string> &strings) -> bool
+         .isAvailable = [](Node_ptr& node, const std::vector<std::string> &strings) -> bool
          {
              return true;
          }},
-        {[](Node &node, const std::vector<std::string> &strings) -> std::string
+        {.getName = [](Node_ptr& node, const std::vector<std::string> &strings) -> std::string
          {
              return "Go to enclosing criteria";
          },
-         [](Node &node, const std::vector<std::string> &strings) -> Node
+         .promptAction = [](Node_ptr& node, const std::vector<std::string> &strings) -> Node_ptr
          {
-             assert(node.enclosingCriteria_.has_value() && "Must have enclosing criteria to go up!");
+             assert(node->enclosingCriteria_.has_value() && "Must have enclosing criteria to go up!");
 
-             return *node.enclosingCriteria_.value();
+             auto enclosing = node->enclosingCriteria_.value().lock();
+
+             return enclosing;
          },
-         [](Node &node, const std::vector<std::string> &strings) -> bool
+         .isAvailable = [](Node_ptr& node, const std::vector<std::string> &strings) -> bool
          {
-             return node.enclosingCriteria_.has_value();
+             return node->enclosingCriteria_.has_value();
          }},
     }};
 
-    std::print("Current node name: {}", currentNode.name_);
+    std::println("Current node name: {}", currentNode->name_);
 
     int opt = promptUserWithOption(options | std::views::transform([&currentNode, labels](NodePromptOption &option) -> std::string
-                                                                   { return option.getName(currentNode, labels); }));
+                                                                   { return option.getName(currentNode, labels); }),
+                                   input);
 
     currentNode = options.at(opt).promptAction(currentNode, labels);
 

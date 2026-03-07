@@ -9,11 +9,19 @@
 
 int main(int argc, char *argv[])
 {
-    auto [currentNode, labels] = promptUserForHeadNode();
+    auto [nodeData, labels] = promptUserForHeadNode();
+    std::shared_ptr<Node> root = std::make_shared<Node>(std::move(nodeData));
+
+    std::shared_ptr<Node> currentNode = root;
 
     while (true)
     {
-        currentNode = promptUserForNode(currentNode, labels);
+        currentNode = promptUserForNode(currentNode, labels, std::cin);
+        
+        if (!currentNode) {
+            std::println("Navigation failed, resetting to root");
+            currentNode = root;
+        }
     }
 
     // assert(argc > 1 && "No file provided");
