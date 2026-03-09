@@ -52,6 +52,11 @@ auto SquareMatrix::mul(const std::vector<double> &vec) const -> std::vector<doub
     return ret;
 }
 
+std::vector<std::vector<double>> SquareMatrix::getUnderlying() const
+{
+    return data_;
+}
+
 auto SquareMatrix::OneMatrix(int size) -> SquareMatrix
 {
     std::vector<std::vector<double>> ret(size);

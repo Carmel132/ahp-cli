@@ -23,5 +23,7 @@ public:
 
     [[nodiscard]] auto mul(const std::vector<double> &vec) const -> std::vector<double>;
 
+    std::vector<std::vector<double>> getUnderlying() const;
+
     static auto OneMatrix(int size) -> SquareMatrix;
 };

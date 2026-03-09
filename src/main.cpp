@@ -17,8 +17,9 @@ int main(int argc, char *argv[])
     while (true)
     {
         currentNode = promptUserForNode(currentNode, labels, std::cin);
-        
-        if (!currentNode) {
+
+        if (!currentNode)
+        {
             std::println("Navigation failed, resetting to root");
             currentNode = root;
         }

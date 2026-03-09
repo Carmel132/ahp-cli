@@ -2,24 +2,28 @@
 
 #include <charconv>
 #include <concepts>
+#include <fstream>
 #include <functional>
 #include <iostream>
 #include <memory>
 #include <optional>
 #include <print>
 #include <ranges>
+#include <sstream>
 #include <string>
 #include <vector>
-#include <sstream>
 
+#include <yaml-cpp/yaml.h>
+
+#include <ahp.h>
 #include <matrix.h>
 
 auto tryParseInt(std::string_view str) -> std::optional<int>;
 
-auto promptUserForInt(const std::string &message, std::istream& input = std::cin) -> int;
+auto promptUserForInt(const std::string &message, std::istream &input = std::cin) -> int;
 
 template <std::ranges::input_range R>
-auto promptUserWithOption(const R &options, std::istream& input = std::cin) -> int
+auto promptUserWithOption(const R &options, std::istream &input = std::cin) -> int
 {
     assert(!std::ranges::empty(options) && "Must have at least one option");
 
@@ -42,12 +46,12 @@ auto promptUserWithOption(const R &options, std::istream& input = std::cin) -> i
     return numResponse.value() - 1;
 }
 
-auto promptUserForBool(const std::string &message, std::istream& input = std::cin) -> bool;
+auto promptUserForBool(const std::string &message, std::istream &input = std::cin) -> bool;
 
-auto promptUserForString(const std::string &message, std::istream& input = std::cin) -> std::string;
+auto promptUserForString(const std::string &message, std::istream &input = std::cin) -> std::string;
 
 template <std::ranges::input_range R>
-auto promptUserForWeightMatrix(const R &labels, std::istream& input = std::cin) -> SquareMatrix
+auto promptUserForWeightMatrix(const R &labels, std::istream &input = std::cin) -> SquareMatrix
 {
     assert(!std::ranges::empty(labels) && "Must provide labels!");
 
@@ -80,7 +84,7 @@ auto promptUserForWeightMatrix(const R &labels, std::istream& input = std::cin) 
     return {ret};
 }
 
-class Node : std::enable_shared_from_this<Node>
+class Node : public std::enable_shared_from_this<Node>
 {
 public:
     std::string name_;
@@ -88,16 +92,24 @@ public:
     std::optional<std::vector<std::shared_ptr<Node>>> subcriteria_;
     std::optional<std::weak_ptr<Node>> enclosingCriteria_;
 
-    Node(const std::string& name, const SquareMatrix& matrix, std::optional<std::vector<std::shared_ptr<Node>>> subcriteria = std::nullopt, std::optional<std::weak_ptr<Node>> enclosingCriteria = std::nullopt) : 
-    name_{name}, matrix_{matrix}, subcriteria_{std::move(subcriteria)}, enclosingCriteria_{std::move(enclosingCriteria)} {}
+    Node(const std::string &name, const SquareMatrix &matrix, std::optional<std::vector<std::shared_ptr<Node>>> subcriteria = std::nullopt, std::optional<std::weak_ptr<Node>> enclosingCriteria = std::nullopt) : name_{name}, matrix_{matrix}, subcriteria_{std::move(subcriteria)}, enclosingCriteria_{std::move(enclosingCriteria)} {}
 
     auto collectSubcriteriaNames();
 };
 using Node_ptr = std::shared_ptr<Node>;
-auto promptUserForHeadNode(std::istream& input = std::cin) -> std::pair<Node, std::vector<std::string>>;
+
+void invalidateMatrix(Node_ptr &node);
+
+auto getRootNode(const Node_ptr &node) -> Node_ptr;
+
+auto addYAMLSubcriteria(YAML::Node &head, const Node_ptr &node, const std::vector<std::string> &labels) -> YAML::Node;
+
+auto convertToYAMLNode(const Node_ptr &node, const std::vector<std::string> &labels) -> YAML::Node;
+
+auto promptUserForHeadNode(std::istream &input = std::cin) -> std::pair<Node, std::vector<std::string>>;
 
 template <typename T>
-using NodePromptFunction = std::function<T(Node_ptr&, const std::vector<std::string> &)>;
+using NodePromptFunction = std::function<T(Node_ptr &, const std::vector<std::string> &)>;
 
 struct NodePromptOption
 {
@@ -106,7 +118,7 @@ struct NodePromptOption
     NodePromptFunction<bool> isAvailable;
 };
 
-auto promptUserForNode(Node_ptr currentNode, const std::vector<std::string> &labels, std::istream& input = std::cin) -> Node_ptr;
+auto promptUserForNode(Node_ptr currentNode, const std::vector<std::string> &labels, std::istream &input = std::cin) -> Node_ptr;
 /*
 1. Ask for labels and top level objective
 2. Print the top level node and present the following options
