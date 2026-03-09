@@ -80,8 +80,6 @@ auto promptUserForWeightMatrix(const R &labels, std::istream& input = std::cin) 
     return {ret};
 }
 
-
-
 class Node : std::enable_shared_from_this<Node>
 {
 public:
@@ -114,9 +112,12 @@ auto promptUserForNode(Node_ptr currentNode, const std::vector<std::string> &lab
 2. Print the top level node and present the following options
  - Change name
  - Change matrix
- - [Add/See] subcriteria
+ - Add subcriteria*
+ - Remove subcriteria* (if present)
+ - See subcriteria (if present)
  - Move up (if present)
+ - Export
+ - Run
+
+ * = invalidates weight matrix
 */
-struct REPL
-{
-};

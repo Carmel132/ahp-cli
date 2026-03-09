@@ -136,13 +136,8 @@ auto promptUserForNode(Node_ptr currentNode, const std::vector<std::string> &lab
                 );
 
                 child->enclosingCriteria_ = node;
-                subcriteriaNodes.emplace_back(child);
-
-                 //subcriteriaNodes.emplace_back(std::make_shared<Node>(nodeName, SquareMatrix::OneMatrix(strings.size()), std::nullopt, std::make_optional<std::weak_ptr<Node>>(node)));
-             
-             
-             
-                }
+                subcriteriaNodes.emplace_back(child);    
+            }
 
              node->subcriteria_.emplace(subcriteriaNodes);
              return node;
@@ -171,9 +166,18 @@ auto promptUserForNode(Node_ptr currentNode, const std::vector<std::string> &lab
 
     std::println("Current node name: {}", currentNode->name_);
 
-    int opt = promptUserWithOption(options | std::views::transform([&currentNode, labels](NodePromptOption &option) -> std::string
-                                                                   { return option.getName(currentNode, labels); }),
-                                   input);
+    std::vector<size_t> validOptionIndices{};
+    validOptionIndices.reserve(options.size());
+    for (size_t idx{}; idx < options.size(); ++idx) {
+        if (options.at(idx).isAvailable(currentNode, labels)) {
+            validOptionIndices.emplace_back(idx);
+        }
+    }
+
+    auto displayStrings = validOptionIndices
+    | std::views::transform([&](size_t idx) -> std::string {return options.at(idx).getName(currentNode, labels);});
+
+    size_t opt = validOptionIndices.at(promptUserWithOption(displayStrings, input));
 
     currentNode = options.at(opt).promptAction(currentNode, labels);
 
