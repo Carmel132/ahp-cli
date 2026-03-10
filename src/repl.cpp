@@ -1,39 +1,5 @@
 #include <repl.h>
 
-auto tryParseInt(std::string_view str) -> std::optional<int>
-{
-    int value;
-    auto [ptr, ec] = std::from_chars(
-        str.data(),
-        str.data() + str.size(),
-        value);
-
-    if (ec == std::errc() && ptr == str.data() + str.size())
-    {
-        return value;
-    }
-
-    return std::nullopt;
-}
-
-auto promptUserForInt(const std::string &message, std::istream &input) -> int
-{
-
-    std::println("{}", message);
-    std::print("?> ");
-    std::string response;
-    std::getline(input, response);
-    std::optional<int> numReponse = tryParseInt(response);
-    while (!numReponse.has_value())
-    {
-        std::print("Invalid input!\n?> ");
-        std::getline(input, response);
-        numReponse = tryParseInt(response);
-    }
-
-    return numReponse.value();
-}
-
 auto promptUserForBool(const std::string &message, std::istream &input) -> bool
 {
     static std::vector<std::string> messages{"Yes", "No"};
@@ -49,6 +15,24 @@ auto promptUserForString(const std::string &message, std::istream &input) -> std
     std::string response;
     std::getline(input, response);
     return response;
+}
+
+void printMatrix(Node_ptr &node)
+{
+
+    for (size_t row = 0; row < node->matrix_.size(); ++row)
+    {
+        std::print("[");
+        for (size_t column = 0; column < node->matrix_.size(); ++column)
+        {
+            std::print("{:>5.3g}", node->matrix_.get(row, column));
+            if (column < node->matrix_.size() - 1)
+            {
+                std::print("  ");
+            }
+        }
+        std::println("]");
+    }
 }
 
 void invalidateMatrix(Node_ptr &node)
@@ -101,9 +85,45 @@ auto convertToYAMLNode(const Node_ptr &node, const std::vector<std::string> &lab
     return ret;
 }
 
+auto fromYAMLNodeSubcriteria(Node_ptr& enclosing, const YAML::Node& subcriteria) -> Node_ptr {
+    auto name = subcriteria["name"].as<std::string>();
+    auto mat = SquareMatrix(subcriteria["comparisons"].as<std::vector<std::vector<double>>>());
+
+    std::optional<std::vector<Node_ptr>> sub = std::nullopt;
+
+    Node_ptr ret = std::make_shared<Node>(name, mat, sub, enclosing);
+
+    if (YAML_MapHasLabel(subcriteria, "subcriteria")) {
+        ret->subcriteria_.emplace();
+        for (YAML::Node subcriteriaNode : subcriteria["subcriteria"]) {
+            ret->subcriteria_.value().emplace_back(fromYAMLNodeSubcriteria(ret, subcriteriaNode));
+        }
+    }
+
+    return ret;
+}
+
+auto fromYAMLNode(const YAML::Node &head) -> std::pair<Node_ptr, std::vector<std::string>>
+{
+    auto labels = head["labels"].as<std::vector<std::string>>();
+    auto objective = head["criteria"]["name"].as<std::string>();
+    auto mat = SquareMatrix(head["criteria"]["comparisons"].as<std::vector<std::vector<double>>>());
+
+    Node_ptr ret = std::make_shared<Node>(objective, mat, std::nullopt, std::nullopt);
+
+    if (YAML_MapHasLabel(head["criteria"], "subcriteria")) {
+        ret->subcriteria_.emplace();
+        for (YAML::Node subcriteriaNode : head["criteria"]["subcriteria"]) {
+            ret->subcriteria_.value().emplace_back(fromYAMLNodeSubcriteria(ret, subcriteriaNode));
+        }
+    }
+
+    return std::make_pair(ret, labels);
+}
+
 auto promptUserForHeadNode(std::istream &input) -> std::pair<Node, std::vector<std::string>>
 {
-    int numLabels = promptUserForInt("How many labels are there", input);
+    int numLabels = promptUserForNumeric<int>("How many labels are there", input);
     std::vector<std::string> labels(numLabels);
 
     for (int count{}; count < numLabels; ++count)
@@ -125,7 +145,9 @@ auto Node::collectSubcriteriaNames()
 
 auto promptUserForNode(Node_ptr currentNode, const std::vector<std::string> &labels, std::istream &input) -> Node_ptr
 {
-    static std::array<NodePromptOption, 8> options{{
+    static const int numOptions = 8;
+
+    static std::array<NodePromptOption, numOptions> options{{
         {.getName = [](Node_ptr &node, const std::vector<std::string> &strings) -> std::string
          {
              return "Change name";
@@ -165,12 +187,7 @@ auto promptUserForNode(Node_ptr currentNode, const std::vector<std::string> &lab
          },
          .promptAction = [&input](Node_ptr &node, const std::vector<std::string> &strings) -> Node_ptr
          {
-             //  if (node->subcriteria_.has_value())
-             //  {
-             //      return node->subcriteria_.value().at(promptUserWithOption(node->collectSubcriteriaNames()));
-             //  }
-
-             int numSubcriteria = promptUserForInt("How many subcriteria do you want to add");
+             int numSubcriteria = promptUserForNumeric<int>("How many subcriteria do you want to add", input);
 
              std::vector<Node_ptr> subcriteriaNodes{};
              subcriteriaNodes.reserve(numSubcriteria);
@@ -215,7 +232,7 @@ auto promptUserForNode(Node_ptr currentNode, const std::vector<std::string> &lab
 
              node->subcriteria_.value().erase(node->subcriteria_.value().begin() + option);
 
-             if (node->subcriteria_.value().size() == 0)
+             if (node->subcriteria_.value().empty())
              {
                  node->subcriteria_.reset(); // Ensure subcriteria vector is not empty
              }
@@ -274,23 +291,25 @@ auto promptUserForNode(Node_ptr currentNode, const std::vector<std::string> &lab
          }},
         {.getName = [](Node_ptr &node, const std::vector<std::string> &strings) -> std::string
          {
-             return "Export";
+             return "Run";
          },
          .promptAction = [&](Node_ptr &node, const std::vector<std::string> &strings) -> Node_ptr
          {
-             std::ofstream fout(promptUserForString("File name", input));
+             std::println("\n====================\nDecision: {}\n====================\n", getDecision(convertToYAMLNode(getRootNode(node), strings)));
 
-             fout << convertToYAMLNode(getRootNode(node), strings);
              return node;
          },
          .isAvailable = [](Node_ptr &node, const std::vector<std::string> &strings) -> bool
          {
              return true;
          }},
-
     }};
 
     std::println("Current node name: {}", currentNode->name_);
+    printMatrix(currentNode);
+
+    double consistencyRaw = getConsistency(currentNode->matrix_, getWeightVector(currentNode->matrix_));
+    std::println("Raw consistency: {:.3g}, Consistency index: {:.3g}", consistencyRaw, getConsistencyIndex(consistencyRaw, labels.size()));
 
     std::vector<size_t> validOptionIndices{};
     validOptionIndices.reserve(options.size());

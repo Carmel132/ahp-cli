@@ -18,9 +18,40 @@
 #include <ahp.h>
 #include <matrix.h>
 
-auto tryParseInt(std::string_view str) -> std::optional<int>;
+template <typename T>
+auto tryParseNumeric(std::string_view str) -> std::optional<T> {
+    T value;
+    auto [ptr, ec] = std::from_chars(
+        str.data(),
+        str.data() + str.size(),
+        value);
 
-auto promptUserForInt(const std::string &message, std::istream &input = std::cin) -> int;
+    if (ec == std::errc() && ptr == str.data() + str.size())
+    {
+        return value;
+    }
+
+    return std::nullopt;
+}
+
+template <typename T>
+auto promptUserForNumeric(const std::string &message, std::istream &input = std::cin) -> T {
+    std::println("{}", message);
+    std::string response;
+
+    while (true) {
+        std::print("?> ");
+        if (!std::getline(input, response)) {
+            throw std::runtime_error("Stream error");
+        }
+
+        if (auto numResponse = tryParseNumeric<T>(response)) {
+            return numResponse.value();
+        }
+
+        std::println("Invalid input!");
+    }
+}
 
 template <std::ranges::input_range R>
 auto promptUserWithOption(const R &options, std::istream &input = std::cin) -> int
@@ -36,12 +67,12 @@ auto promptUserWithOption(const R &options, std::istream &input = std::cin) -> i
     std::print("\n?> ");
     std::string response;
     std::getline(std::cin, response);
-    std::optional<int> numResponse = tryParseInt(response);
+    std::optional<int> numResponse = tryParseNumeric<int>(response);
     while (!numResponse.has_value() || numResponse.value() - 1 >= std::ranges::distance(options))
     {
         std::print("Invalid input!\n?> ");
         std::getline(std::cin, response);
-        numResponse = tryParseInt(response);
+        numResponse = tryParseNumeric<int>(response);
     }
     return numResponse.value() - 1;
 }
@@ -72,7 +103,7 @@ auto promptUserForWeightMatrix(const R &labels, std::istream &input = std::cin) 
             }
             else if (row < column)
             {
-                ret[row][column] = promptUserForInt(std::format("How much more do you like {} over {}", labels[row], labels[column]));
+                ret[row][column] = promptUserForNumeric<double>(std::format("How much more do you like {} over {}", labels[row], labels[column]));
             }
             else
             {
@@ -98,13 +129,17 @@ public:
 };
 using Node_ptr = std::shared_ptr<Node>;
 
+void printMatrix(Node_ptr &node);
+
 void invalidateMatrix(Node_ptr &node);
 
 auto getRootNode(const Node_ptr &node) -> Node_ptr;
 
-auto addYAMLSubcriteria(YAML::Node &head, const Node_ptr &node, const std::vector<std::string> &labels) -> YAML::Node;
+auto addYAMLSubcriteria(YAML::Node &head, const Node_ptr &node) -> YAML::Node;
 
 auto convertToYAMLNode(const Node_ptr &node, const std::vector<std::string> &labels) -> YAML::Node;
+
+auto fromYAMLNode(const YAML::Node& head) -> std::pair<Node_ptr, std::vector<std::string>>;
 
 auto promptUserForHeadNode(std::istream &input = std::cin) -> std::pair<Node, std::vector<std::string>>;
 
@@ -119,17 +154,3 @@ struct NodePromptOption
 };
 
 auto promptUserForNode(Node_ptr currentNode, const std::vector<std::string> &labels, std::istream &input = std::cin) -> Node_ptr;
-/*
-1. Ask for labels and top level objective
-2. Print the top level node and present the following options
- - Change name
- - Change matrix
- - Add subcriteria*
- - Remove subcriteria* (if present)
- - See subcriteria (if present)
- - Move up (if present)
- - Export
- - Run
-
- * = invalidates weight matrix
-*/
